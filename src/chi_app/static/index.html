@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chimeric · Agent Demo</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #141b2e;
+      --panel-2: #1b2440;
+      --line: #2a3354;
+      --text: #e9eefb;
+      --muted: #9aa6c8;
+      --accent: #4cc9f0;
+      --accent-2: #7b61ff;
+      --good: #46e3a0;
+      --warn: #ffd166;
+      --bad: #ff6b6b;
+      --radius: 14px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 600px at 80% -10%, #1a2342 0%, var(--bg) 55%) fixed;
+      color: var(--text);
+      display: flex; flex-direction: column; height: 100vh;
+    }
+    header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 22px; border-bottom: 1px solid var(--line);
+      background: rgba(20,27,46,.6); backdrop-filter: blur(8px);
+    }
+    .logo {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: var(--shadow); display: grid; place-items: center; font-weight: 800; color: #06122b;
+    }
+    header h1 { font-size: 16px; margin: 0; letter-spacing: .3px; }
+    header .sub { color: var(--muted); font-size: 12px; }
+    .pill {
+      margin-left: auto; display: flex; gap: 8px; align-items: center;
+      background: var(--panel-2); border: 1px solid var(--line); padding: 6px 10px;
+      border-radius: 999px; font-size: 12px; color: var(--muted);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .dot.down { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+
+    main { flex: 1; display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; padding: 16px 22px 22px; min-height: 0; }
+
+    .card {
+      background: linear-gradient(180deg, var(--panel) 0%, #11182b 100%);
+      border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0;
+    }
+    .card h2 { margin: 0; padding: 14px 16px; font-size: 13px; letter-spacing: .4px;
+      text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
+
+    /* Chat */
+    .chat-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .msg { max-width: 88%; padding: 12px 14px; border-radius: 14px; line-height: 1.45; font-size: 14px; white-space: pre-wrap; }
+    .msg.user { align-self: flex-end; background: linear-gradient(135deg, var(--accent), #2f9fd1); color: #06122b; font-weight: 600; }
+    .msg.agent { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); }
+    .msg .meta { display: block; margin-top: 8px; font-size: 11px; color: var(--muted); font-weight: 500; }
+    .typing { align-self: flex-start; color: var(--muted); font-style: italic; padding: 8px 4px; }
+
+    .composer { display: flex; gap: 10px; padding: 14px 16px; border-top: 1px solid var(--line); }
+    .composer textarea {
+      flex: 1; resize: none; height: 46px; max-height: 120px; padding: 12px 14px;
+      border-radius: 12px; border: 1px solid var(--line); background: #0c1224; color: var(--text);
+      font: inherit; font-size: 14px; outline: none;
+    }
+    .composer textarea:focus { border-color: var(--accent); }
+    button {
+      border: 0; cursor: pointer; font: inherit; font-weight: 700; color: #06122b;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      padding: 0 18px; border-radius: 12px; box-shadow: var(--shadow);
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .hint { color: var(--muted); font-size: 12px; padding: 0 16px 12px; }
+
+    /* Observability */
+    .obs-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .stat .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+    .stat .v { font-size: 20px; font-weight: 800; margin-top: 4px; }
+    .v.good { color: var(--good); } .v.accent { color: var(--accent); } .v.warn { color: var(--warn); }
+
+    .tools { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { background: #0c1224; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--text); }
+    .chip b { color: var(--accent); }
+
+    .trace { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+      background: #0a0f1f; border: 1px solid var(--line); border-radius: 12px; padding: 12px; color: var(--muted); word-break: break-all; }
+
+    .log { background: #0a0f1f; border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 12px; }
+    .log .row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px dashed #1c2440; }
+    .log .row:last-child { border-bottom: 0; }
+    .log .t { color: var(--accent); font-family: ui-monospace, monospace; }
+    .log .badge { font-size: 10px; padding: 1px 7px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
+    .empty { color: var(--muted); font-style: italic; font-size: 13px; }
+
+    @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">χ</div>
+    <div>
+      <h1>Chimeric Intelligence — Agent Demo</h1>
+      <div class="sub" id="agent-sub">reference agent · loading…</div>
+    </div>
+    <div class="pill"><span class="dot" id="health-dot"></span><span id="health-text">checking…</span></div>
+  </header>
+
+  <main>
+    <!-- Chat surface -->
+    <section class="card">
+      <h2>Conversation</h2>
+      <div class="chat-body" id="chat">
+        <div class="msg agent">Hi — I'm the Chimeric reference agent. Ask me anything and watch the observability panel light up with cost + latency. (Right now I run on the offline stub model; wire a real frontier ModelProvider and I answer for real.)</div>
+      </div>
+      <div class="hint">Try: “What is Chimeric Intelligence?” · “echo hello world”</div>
+      <div class="composer">
+        <textarea id="input" placeholder="Type a prompt and press Enter…" rows="1"></textarea>
+        <button id="send">Send</button>
+      </div>
+    </section>
+
+    <!-- Observability -->
+    <section class="card">
+      <h2>Observability (live)</h2>
+      <div class="obs-body">
+        <div class="stat-grid">
+          <div class="stat"><div class="k">Model</div><div class="v accent" id="o-model">—</div></div>
+          <div class="stat"><div class="k">Finish</div><div class="v" id="o-finish">—</div></div>
+          <div class="stat"><div class="k">Latency</div><div class="v good" id="o-latency">—</div></div>
+          <div class="stat"><div class="k">Total tokens</div><div class="v warn" id="o-tokens">—</div></div>
+        </div>
+
+        <div>
+          <div class="k" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Tools available</div>
+          <div class="tools" id="o-tools"><span class="empty">loading…</span></div>
+        </div>
+
+        <div>
+          <div class="k" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Trace</div>
+          <div class="trace" id="o-trace"><span class="empty">No run yet.</span></div>
+        </div>
+
+        <div>
+          <div class="k" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Run log</div>
+          <div class="log" id="o-log"><span class="empty">Runs will appear here.</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let runs = 0;
+
+    async function checkHealth() {
+      try {
+        const res = await fetch("/api/health");
+        const data = await res.json();
+        $("health-dot").className = "dot";
+        $("health-text").textContent = data.status === "ok" ? `online · ${data.model}` : data.status;
+      } catch (e) {
+        $("health-dot").className = "dot down";
+        $("health-text").textContent = "offline";
+      }
+    }
+
+    async function loadAgent() {
+      try {
+        const res = await fetch("/api/agent");
+        const a = await res.json();
+        $("agent-sub").textContent = `${a.name} agent · model ${a.model} · ${a.tools.length} tool(s)`;
+        const tools = $("o-tools");
+        tools.innerHTML = "";
+        if (!a.tools.length) tools.innerHTML = '<span class="empty">none</span>';
+        a.tools.forEach((t) => {
+          const c = document.createElement("span");
+          c.className = "chip";
+          c.innerHTML = `<b>${t.name}</b> · ${t.description}`;
+          tools.appendChild(c);
+        });
+      } catch (e) { /* leave defaults */ }
+    }
+
+    function renderObs(r) {
+      $("o-model").textContent = r.model;
+      const fr = $("o-finish");
+      fr.textContent = r.finish_reason;
+      fr.className = "v " + (r.finish_reason === "stop" ? "" : "warn");
+      $("o-latency").textContent = `${r.usage.latency_ms.toFixed(2)} ms`;
+      $("o-tokens").textContent = `${r.usage.total_tokens}`;
+      $("o-trace").textContent = r.trace_id || "—";
+
+      runs += 1;
+      const log = $("o-log");
+      if (runs === 1) log.innerHTML = "";
+      const row = document.createElement("div");
+      row.className = "row";
+      const when = new Date().toLocaleTimeString();
+      row.innerHTML = `<span class="t">${when}</span>
+        <span>${r.model} · ${r.usage.latency_ms.toFixed(1)}ms · ${r.usage.total_tokens} tok · ${r.tool_calls.length} tool</span>
+        <span class="badge">#${runs}</span>`;
+      log.prepend(row);
+    }
+
+    function addMsg(role, content, meta) {
+      const el = document.createElement("div");
+      el.className = "msg " + role;
+      el.textContent = content;
+      if (meta) {
+        const m = document.createElement("span");
+        m.className = "meta";
+        m.textContent = meta;
+        el.appendChild(m);
+      }
+      $("chat").appendChild(el);
+      $("chat").scrollTop = $("chat").scrollHeight;
+    }
+
+    async function send() {
+      const input = $("input");
+      const prompt = input.value.trim();
+      if (!prompt) return;
+      addMsg("user", prompt);
+      input.value = "";
+      input.style.height = "46px";
+      $("send").disabled = true;
+      const typing = document.createElement("div");
+      typing.className = "typing"; typing.textContent = "agent is thinking…";
+      $("chat").appendChild(typing);
+      $("chat").scrollTop = $("chat").scrollHeight;
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        });
+        const r = await res.json();
+        typing.remove();
+        if (!res.ok) {
+          addMsg("agent", "Error: " + (r.detail || "unknown"), "status " + res.status);
+        } else {
+          const meta = `trace ${r.trace_id} · ${r.model} · ${r.usage.latency_ms.toFixed(2)}ms · ${r.usage.total_tokens} tok`;
+          addMsg("agent", r.content, meta);
+          renderObs(r);
+        }
+      } catch (e) {
+        typing.remove();
+        addMsg("agent", "Network error: " + e.message, "");
+      } finally {
+        $("send").disabled = false;
+        input.focus();
+      }
+    }
+
+    $("send").addEventListener("click", send);
+    $("input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+    });
+    $("input").addEventListener("input", (e) => {
+      e.target.style.height = "46px";
+      e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+    });
+
+    checkHealth();
+    loadAgent();
+    setInterval(checkHealth, 15000);
+  </script>
+</body>
+</html>

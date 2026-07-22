@@ -8,12 +8,12 @@ Commands:
 Designed so a "visual guy" founder can open a terminal and watch an agent respond,
 with latency and token usage surfaced inline (observability by default).
 """
-
 from __future__ import annotations
 
 import argparse
 from typing import NoReturn
 
+import uvicorn
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -72,12 +72,32 @@ def cmd_run() -> NoReturn:
         _print_result(result)
 
 
+def cmd_serve(host: str, port: int) -> None:
+    """Start the lightweight B2C demo web service (CHI-1.5)."""
+    import chi_app.main as web
+
+    console.print(
+        Panel(
+            f"Chimeric B2C demo UI\n"
+            f"Open [bold cyan]http://{host}:{port}[/bold cyan] in a browser.\n"
+            f"Agent: '{web.agent.name}' · model: {web.agent.model}\n"
+            f"Press Ctrl-C to stop.",
+            title="chi serve",
+            border_style="magenta",
+        )
+    )
+    uvicorn.run(web.app, host=host, port=port, log_level="info")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="chi", description="Chimeric agent runtime CLI.")
     sub = parser.add_subparsers(dest="command")
     hello = sub.add_parser("hello", help="Run the hello agent once with a prompt.")
     hello.add_argument("prompt", help="The prompt to send to the agent.")
     sub.add_parser("run", help="Start the interactive local dev harness.")
+    serve = sub.add_parser("serve", help="Start the B2C demo web UI (FastAPI).")
+    serve.add_argument("--host", default="127.0.0.1", help="Bind host (default 127.0.0.1).")
+    serve.add_argument("--port", type=int, default=8000, help="Bind port (default 8000).")
     return parser
 
 
@@ -87,6 +107,8 @@ def main(argv: list[str] | None = None) -> None:
         cmd_hello(args.prompt)
     elif args.command == "run":
         cmd_run()
+    elif args.command == "serve":
+        cmd_serve(args.host, args.port)
     else:
         build_parser().print_help()
         raise SystemExit(1)

@@ -10,7 +10,8 @@ frontier LLMs through clean, observable interfaces.
 - `src/chi_runtime/` — the agent runtime skeleton (models, tool scaffold, agent, orchestrator).
 - `src/chi_runtime/agents/hello.py` — a runnable "hello agent" that accepts a prompt and returns a result.
 - `src/chi_cli/` — a lightweight CLI + local dev harness (`chi run`, `chi hello`).
-- `tests/` — fast unit tests for the runtime + CLI (no network required).
+- `src/chi_app/` — the lightweight B2C demo web service (FastAPI + single-page UI): `chi serve`.
+- `tests/` — fast unit tests for the runtime + CLI + demo API (no network required).
 - `.github/workflows/ci.yml` — green CI: lint, type-check, test on every push/PR.
 
 ## Quick start
@@ -28,7 +29,11 @@ uv run chi hello "What is Chimeric Intelligence?"
 # 4. Run the full local harness (interactive prompt loop)
 uv run chi run
 
-# 5. Run the test suite + linter (same as CI)
+# 5. Run the B2C demo web UI (CHI-1.5) — visual-first surface wired to the runtime
+uv run chi serve --host 127.0.0.1 --port 8000
+#   then open http://127.0.0.1:8000 in a browser
+
+# 6. Run the test suite + linter (same as CI)
 uv run pytest
 uv run ruff check .
 ```
