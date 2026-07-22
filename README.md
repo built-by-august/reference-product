@@ -1,6 +1,6 @@
 # Chimeric Intelligence — Reference Product
 
-Reference product repository for [Chimeric Intelligence](https://github.com/chimeric-intelligence).
+Reference product repository for [Chimeric Intelligence](https://github.com/built-by-august/reference-product).
 This repo is the canonical starting point for agent-driven products built on our
 agent runtime skeleton: an orchestrator + tool-calling scaffold designed to plug in
 frontier LLMs through clean, observable interfaces.
