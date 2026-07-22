@@ -25,6 +25,14 @@ def test_hello_command_returns_result():
     assert "trace_id" in proc.stdout
 
 
+def test_stream_command_emits_tokens():
+    proc = _run_uv(["stream", "Streaming test prompt"])
+    assert proc.returncode == 0, proc.stderr
+    assert "Streaming test prompt" in proc.stdout
+    # Streamed run prints an Observability (streamed) panel.
+    assert "Observability (streamed)" in proc.stdout
+
+
 def test_run_help_exits_cleanly():
     proc = subprocess.run(
         [sys.executable, "-m", "chi_cli.main", "--help"],
@@ -35,3 +43,4 @@ def test_run_help_exits_cleanly():
     assert proc.returncode == 0
     assert "hello" in proc.stdout
     assert "run" in proc.stdout
+    assert "stream" in proc.stdout

@@ -121,7 +121,7 @@
     <section class="card">
       <h2>Conversation</h2>
       <div class="chat-body" id="chat">
-        <div class="msg agent">Hi — I'm the Chimeric reference agent. Ask me anything and watch the observability panel light up with cost + latency. (Right now I run on the offline stub model; wire a real frontier ModelProvider and I answer for real.)</div>
+        <div class="msg agent">Hi — I'm the Chimeric reference agent. Ask me anything and watch the tokens stream and the observability panel light up with cost + latency. (Right now I run on the offline stub model; wire a real frontier ModelProvider and I answer for real.)</div>
       </div>
       <div class="hint">Try: “What is Chimeric Intelligence?” · “echo hello world”</div>
       <div class="composer">
@@ -149,6 +149,16 @@
         <div>
           <div class="k" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Trace</div>
           <div class="trace" id="o-trace"><span class="empty">No run yet.</span></div>
+        </div>
+
+        <div>
+          <div class="k" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Run metrics (rolling)</div>
+          <div class="stat-grid" id="o-metrics">
+            <div class="stat"><div class="k">Runs</div><div class="v" id="m-runs">—</div></div>
+            <div class="stat"><div class="k">p95 latency</div><div class="v warn" id="m-p95">—</div></div>
+            <div class="stat"><div class="k">Total tokens</div><div class="v accent" id="m-tokens">—</div></div>
+            <div class="stat"><div class="k">Retries / Fails</div><div class="v" id="m-retry">—</div></div>
+          </div>
         </div>
 
         <div>
@@ -190,6 +200,17 @@
           tools.appendChild(c);
         });
       } catch (e) { /* leave defaults */ }
+    }
+
+    async function refreshMetrics() {
+      try {
+        const res = await fetch("/api/metrics");
+        const m = await res.json();
+        $("m-runs").textContent = m.total_runs;
+        $("m-p95").textContent = `${m.p95_latency_ms.toFixed(1)} ms`;
+        $("m-tokens").textContent = m.total_tokens;
+        $("m-retry").textContent = `${m.retried_runs} / ${m.failed_runs}`;
+      } catch (e) { /* metrics optional */ }
     }
 
     function renderObs(r) {
@@ -235,29 +256,68 @@
       input.value = "";
       input.style.height = "46px";
       $("send").disabled = true;
-      const typing = document.createElement("div");
-      typing.className = "typing"; typing.textContent = "agent is thinking…";
-      $("chat").appendChild(typing);
+
+      // Streamed: tokens are appended progressively to a single agent message.
+      const agentMsg = document.createElement("div");
+      agentMsg.className = "msg agent";
+      const typing = document.createElement("span");
+      typing.className = "typing";
+      typing.textContent = "streaming…";
+      agentMsg.appendChild(typing);
+      $("chat").appendChild(agentMsg);
       $("chat").scrollTop = $("chat").scrollHeight;
+
+      let usage = null, finishReason = "stop", traceId = null;
       try {
-        const res = await fetch("/api/chat", {
+        const res = await fetch("/api/chat/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt }),
         });
-        const r = await res.json();
-        typing.remove();
-        if (!res.ok) {
-          addMsg("agent", "Error: " + (r.detail || "unknown"), "status " + res.status);
-        } else {
-          const meta = `trace ${r.trace_id} · ${r.model} · ${r.usage.latency_ms.toFixed(2)}ms · ${r.usage.total_tokens} tok`;
-          addMsg("agent", r.content, meta);
-          renderObs(r);
+        if (!res.ok || !res.body) {
+          agentMsg.textContent = "Error: " + (res.status || "unknown");
+          return;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          // SSE frames are separated by a blank line.
+          const frames = buffer.split("\n\n");
+          buffer = frames.pop();
+          for (const frame of frames) {
+            const line = frame.split("\n").find((l) => l.startsWith("data:"));
+            if (!line) continue;
+            const payload = JSON.parse(line.slice(5).trim());
+            if (payload.type === "token") {
+              typing.remove();
+              agentMsg.appendChild(document.createTextNode(payload.text));
+              $("chat").scrollTop = $("chat").scrollHeight;
+            } else if (payload.type === "done") {
+              usage = payload.usage;
+              finishReason = payload.finish_reason;
+            } else if (payload.type === "error") {
+              typing.remove();
+              agentMsg.appendChild(document.createTextNode("Error: " + payload.message));
+            }
+          }
         }
       } catch (e) {
         typing.remove();
-        addMsg("agent", "Network error: " + e.message, "");
+        agentMsg.appendChild(document.createTextNode("Network error: " + e.message));
       } finally {
+        const meta = usage
+          ? `streamed · ${usage.latency_ms.toFixed(2)}ms · ${usage.total_tokens} tok`
+          : (finishReason || "");
+        const m = document.createElement("span");
+        m.className = "meta";
+        m.textContent = meta;
+        agentMsg.appendChild(m);
+        renderObs({ model: $("o-model").textContent || "—", finish_reason: finishReason, usage: usage || { latency_ms: 0, total_tokens: 0 }, trace_id: traceId, tool_calls: [] });
+        refreshMetrics();
         $("send").disabled = false;
         input.focus();
       }
@@ -274,7 +334,9 @@
 
     checkHealth();
     loadAgent();
+    refreshMetrics();
     setInterval(checkHealth, 15000);
+    setInterval(refreshMetrics, 5000);
   </script>
 </body>
 </html>

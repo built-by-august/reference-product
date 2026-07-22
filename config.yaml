@@ -1,0 +1,32 @@
+# Chimeric reference-product configuration.
+#
+# This file is OPTIONAL. The runtime ships with sane defaults and also reads
+# CHI_-prefixed environment variables (e.g. CHI_MODEL, CHI_RETRY__MAX_ATTEMPTS).
+# Precedence: built-in defaults < this YAML file < environment variables.
+#
+# Founders can tweak behaviour here without touching code. See src/chi_runtime/config.py.
+
+model:
+  provider: stub          # stub | openai | anthropic
+  model: stub             # real model id when using openai/anthropic (else ignored)
+  temperature: 0.0
+  request_timeout: 60.0
+
+retry:
+  max_attempts: 3         # how many times a failing model call is retried
+  base_delay: 0.5         # seconds before the first retry (doubles each time)
+  max_delay: 8.0          # cap on a single backoff wait
+  backoff_factor: 2.0
+  retry_on:               # error kinds we are willing to retry
+    - timeout
+    - rate_limit
+    - server_error
+    - connection
+
+streaming:
+  enabled: true           # stream tokens as they arrive (harness + web UI)
+
+observability:
+  emit_metrics: true      # record latency + token totals per run
+  max_stored_runs: 100    # ring-buffer cap for the in-memory metrics store
+  log_level: INFO

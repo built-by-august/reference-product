@@ -10,6 +10,7 @@ dependencies = [
     "rich>=13.7",
     "fastapi>=0.111",
     "uvicorn[standard]>=0.30",
+    "pyyaml>=6.0",  # optional at runtime; only needed when loading a YAML config
 ]
 
 [dependency-groups]
