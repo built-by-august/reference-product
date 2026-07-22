@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg
+
+# Virtual envs (uv uses .venv by default)
+.venv/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets / local config
+.env
+.env.*
+secrets.*
