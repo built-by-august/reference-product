@@ -87,6 +87,43 @@ class Usage:
     total_tokens: int = 0
     latency_ms: float = 0.0
 
+    def __add__(self, other: Usage) -> Usage:
+        return Usage(
+            prompt_tokens=self.prompt_tokens + other.prompt_tokens,
+            completion_tokens=self.completion_tokens + other.completion_tokens,
+            total_tokens=self.total_tokens + other.total_tokens,
+            latency_ms=self.latency_ms + other.latency_ms,
+        )
+
+    @classmethod
+    def zero(cls) -> Usage:
+        return cls()
+
+
+class StreamEventType(str, Enum):
+    """Discriminator for a streaming chunk emitted by a provider."""
+
+    TOKEN = "token"        # a piece of assistant text
+    TOOL_CALL = "tool_call"  # a (possibly partial) tool call
+    DONE = "done"          # stream finished
+    ERROR = "error"        # stream aborted with an error
+
+
+@dataclass
+class StreamChunk:
+    """One incremental event from a streaming model call.
+
+    The harness streams these as tokens arrive; the web layer forwards them as
+    Server-Sent Events. ``text`` is only meaningful on ``TOKEN`` chunks.
+    """
+
+    event: StreamEventType
+    text: str = ""
+    data: dict[str, Any] | None = None  # tool_call payload, error detail, etc.
+    usage: Usage | None = None         # present on the DONE chunk
+    finish_reason: FinishReason | None = None  # present on the DONE chunk
+    trace_id: str | None = None          # present on the DONE chunk
+
 
 @dataclass
 class AgentResult:
